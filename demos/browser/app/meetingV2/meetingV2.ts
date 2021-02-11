@@ -127,6 +127,7 @@ class TestSound {
   constructor(
     private logger: Logger,
     private sinkId: string | null,
+    private audioElem: HTMLAudioElement = new Audio(),
     private frequency: number = 440,
     private durationSec: number = 1,
     private rampSec: number = 0.1,
@@ -152,6 +153,7 @@ class TestSound {
       startTime + this.rampSec + this.durationSec
     );
     gainNode.gain.linearRampToValueAtTime(0, startTime + this.rampSec * 2 + this.durationSec);
+    console.log('Start playing');
     oscillatorNode.start();
     const audioMixController = new DefaultAudioMixController(this.logger);
     if (new DefaultBrowserBehavior().supportsSetSinkId()) {
@@ -164,13 +166,14 @@ class TestSound {
       }
     }
     try {
-      await audioMixController.bindAudioElement(new Audio());
+      await audioMixController.bindAudioElement(this.audioElem);
     } catch (e) {
       fatal(e);
       this.logger?.error(`Failed to bind audio element: ${e}`);
     }
     await audioMixController.bindAudioStream(destinationStream.stream);
     new TimeoutScheduler((this.rampSec * 2 + this.durationSec + 1) * 1000).start(() => {
+      console.log('closing audio context');
       audioContext.close();
     });
   }
@@ -587,7 +590,12 @@ export class DemoMeetingApp
     document.getElementById('button-test-sound').addEventListener('click', async e => {
       e.preventDefault();
       const audioOutput = document.getElementById('audio-output') as HTMLSelectElement;
-      const testSound = new TestSound(this.meetingEventPOSTLogger, audioOutput.value);
+      const testAudioElem = document.getElementById('test-audio') as HTMLAudioElement;
+      const testSound = new TestSound(
+        this.meetingEventPOSTLogger,
+        audioOutput.value,
+        testAudioElem
+      );
       await testSound.init();
     });
 
